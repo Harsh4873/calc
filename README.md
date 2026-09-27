@@ -43,6 +43,9 @@ npm run preview    # preview the production build
 
 ## Deploy
 
-Pushing to `main` triggers `.github/workflows/deploy-pages.yml`, which installs, tests,
-typechecks, builds with `base: '/calc/'`, validates the artifact, and publishes to GitHub
-Pages at `https://harsh.bet/calc/`.
+Live at **https://harsh.bet/calc/** (`base: '/calc/'`).
+
+- **Current:** GitHub Pages serves the `gh-pages` branch (built `dist/`).
+- **Intended:** `.github/workflows/deploy-pages.yml` on push to `main` (Node 22 → test →
+  typecheck → build → validate → deploy-pages), matching Notes/Recipes. That workflow is
+  ready in the repo; publishing it requires a GitHub token with the `workflow` scope.
