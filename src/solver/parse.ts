@@ -33,7 +33,10 @@ export function normalizeExpr(input: string): string {
     .replace(/÷/g, '/')
     .replace(/−/g, '-')
     .replace(/−/g, '-')
+    .replace(/π/g, 'pi')
+    .replace(/∞/g, 'Infinity')
     .replace(/\^\s*/g, '^')
+    .replace(/∛\s*/g, 'cbrt')
     .replace(/√\s*/g, 'sqrt');
   // number followed by variable or ( -> multiply
   s = s.replace(/(\d)\s*([a-zA-Z(])/g, '$1*$2');

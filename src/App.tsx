@@ -1,6 +1,8 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Math from './components/Math';
+import SymbolPad, { type PadAction } from './components/SymbolPad';
 import { EXAMPLES } from './examples';
+import { applyBackspace, applyInsert } from './lib/insertAtCaret';
 import { solve } from './solver';
 import type { SolveResult } from './solver';
 import { useHistory } from './useHistory';
@@ -24,12 +26,54 @@ const THEME_LABEL: Record<string, string> = {
   dark: 'Dark',
 };
 
+const PAD_KEY = 'calc.symbolPad.open.v1';
+
+function loadPadOpen(): boolean {
+  try {
+    return localStorage.getItem(PAD_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function savePadOpen(open: boolean): void {
+  try {
+    localStorage.setItem(PAD_KEY, open ? '1' : '0');
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function App() {
   const [input, setInput] = useState('');
   const [result, setResult] = useState<SolveResult | null>(null);
+  const [padOpen, setPadOpen] = useState(false);
   const { entries, add, clear } = useHistory();
   const { theme, cycle } = useTheme();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Track selection so pad inserts work even if focus briefly blurs.
+  const selectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
+
+  useEffect(() => {
+    setPadOpen(loadPadOpen());
+  }, []);
+
+  const setPadOpenPersist = useCallback((open: boolean | ((prev: boolean) => boolean)) => {
+    setPadOpen((prev) => {
+      const next = typeof open === 'function' ? open(prev) : open;
+      savePadOpen(next);
+      return next;
+    });
+  }, []);
+
+  const rememberSelection = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    selectionRef.current = {
+      start: el.selectionStart ?? 0,
+      end: el.selectionEnd ?? 0,
+    };
+  }, []);
 
   const runSolve = useCallback(
     (raw: string) => {
@@ -64,6 +108,38 @@ export default function App() {
     runSolve(value);
     textareaRef.current?.focus();
   };
+
+  const applyToInput = useCallback((nextValue: string, caret: number) => {
+    setInput(nextValue);
+    selectionRef.current = { start: caret, end: caret };
+    // Restore focus + caret after React commits the value.
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(caret, caret);
+    });
+  }, []);
+
+  const onPadAction = useCallback(
+    (action: PadAction) => {
+      const el = textareaRef.current;
+      let start = selectionRef.current.start;
+      let end = selectionRef.current.end;
+      // Prefer live selection when the textarea still has focus.
+      if (el && document.activeElement === el) {
+        start = el.selectionStart ?? start;
+        end = el.selectionEnd ?? end;
+      }
+      const value = el?.value ?? input;
+      const result =
+        action.kind === 'backspace'
+          ? applyBackspace(value, start, end)
+          : applyInsert(value, start, end, action.spec);
+      applyToInput(result.value, result.caret);
+    },
+    [applyToInput, input],
+  );
 
   const typeLabel = useMemo(
     () => (result ? TYPE_LABELS[result.type] ?? result.type : ''),
@@ -102,9 +178,29 @@ export default function App() {
       <main className="layout">
         <section className="solver">
           <form onSubmit={onSubmit} className="input-card">
-            <label htmlFor="problem" className="input-label">
-              Enter a math problem
-            </label>
+            <div className="input-label-row">
+              <label htmlFor="problem" className="input-label">
+                Enter a math problem
+              </label>
+              <button
+                type="button"
+                className={`symbols-toggle${padOpen ? ' is-open' : ''}`}
+                onClick={() => setPadOpenPersist((o) => !o)}
+                aria-pressed={padOpen}
+                aria-expanded={padOpen}
+                aria-controls="symbol-pad"
+                title={padOpen ? 'Hide symbol pad' : 'Show symbol pad'}
+              >
+                <span className="symbols-toggle-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <rect x="3" y="10" width="18" height="10" rx="2" />
+                    <path d="M7 14h.01M12 14h.01M17 14h.01M7 17h.01M12 17h.01M17 17h.01" />
+                    <path d="M8 7l2-3 2 3 2-3 2 3" />
+                  </svg>
+                </span>
+                Symbols
+              </button>
+            </div>
             <textarea
               id="problem"
               ref={textareaRef}
@@ -112,12 +208,23 @@ export default function App() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
+              onSelect={rememberSelection}
+              onKeyUp={rememberSelection}
+              onClick={rememberSelection}
+              onBlur={rememberSelection}
               placeholder="e.g. solve x^2 - 5x + 6 = 0"
               rows={3}
               autoFocus
               spellCheck={false}
               autoComplete="off"
             />
+            <div id="symbol-pad">
+              <SymbolPad
+                open={padOpen}
+                onClose={() => setPadOpenPersist(false)}
+                onAction={onPadAction}
+              />
+            </div>
             <div className="input-row">
               <span className="hint">Press Enter to solve · Shift+Enter for a new line</span>
               <button type="submit" className="solve-btn">
