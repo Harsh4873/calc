@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import LivePreview from './components/LivePreview';
 import Math from './components/Math';
 import SymbolPad, { type PadAction } from './components/SymbolPad';
 import { EXAMPLES } from './examples';
@@ -27,6 +28,7 @@ const THEME_LABEL: Record<string, string> = {
 };
 
 const PAD_KEY = 'calc.symbolPad.open.v1';
+const PREVIEW_KEY = 'calc.preview.open.v1';
 
 function loadPadOpen(): boolean {
   try {
@@ -44,10 +46,30 @@ function savePadOpen(open: boolean): void {
   }
 }
 
+function loadPreviewOpen(): boolean {
+  try {
+    const v = localStorage.getItem(PREVIEW_KEY);
+    // default ON: missing => true, '0' => false
+    if (v === null) return true;
+    return v !== '0';
+  } catch {
+    return true;
+  }
+}
+
+function savePreviewOpen(open: boolean): void {
+  try {
+    localStorage.setItem(PREVIEW_KEY, open ? '1' : '0');
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function App() {
   const [input, setInput] = useState('');
   const [result, setResult] = useState<SolveResult | null>(null);
   const [padOpen, setPadOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(true);
   const { entries, add, clear } = useHistory();
   const { theme, cycle } = useTheme();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -56,12 +78,21 @@ export default function App() {
 
   useEffect(() => {
     setPadOpen(loadPadOpen());
+    setPreviewOpen(loadPreviewOpen());
   }, []);
 
   const setPadOpenPersist = useCallback((open: boolean | ((prev: boolean) => boolean)) => {
     setPadOpen((prev) => {
       const next = typeof open === 'function' ? open(prev) : open;
       savePadOpen(next);
+      return next;
+    });
+  }, []);
+
+  const setPreviewOpenPersist = useCallback((open: boolean | ((prev: boolean) => boolean)) => {
+    setPreviewOpen((prev) => {
+      const next = typeof open === 'function' ? (open as (p: boolean) => boolean)(prev) : open;
+      savePreviewOpen(next);
       return next;
     });
   }, []);
@@ -182,24 +213,37 @@ export default function App() {
               <label htmlFor="problem" className="input-label">
                 Enter a math problem
               </label>
-              <button
-                type="button"
-                className={`symbols-toggle${padOpen ? ' is-open' : ''}`}
-                onClick={() => setPadOpenPersist((o) => !o)}
-                aria-pressed={padOpen}
-                aria-expanded={padOpen}
-                aria-controls="symbol-pad"
-                title={padOpen ? 'Hide symbol pad' : 'Show symbol pad'}
-              >
-                <span className="symbols-toggle-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <rect x="3" y="10" width="18" height="10" rx="2" />
-                    <path d="M7 14h.01M12 14h.01M17 14h.01M7 17h.01M12 17h.01M17 17h.01" />
-                    <path d="M8 7l2-3 2 3 2-3 2 3" />
-                  </svg>
-                </span>
-                Symbols
-              </button>
+              <div className="input-toggles">
+                <button
+                  type="button"
+                  className={`preview-toggle${previewOpen ? ' is-open' : ''}`}
+                  onClick={() => setPreviewOpenPersist((o) => !o)}
+                  aria-pressed={previewOpen}
+                  aria-expanded={previewOpen}
+                  aria-controls="live-preview"
+                  title={previewOpen ? 'Hide preview' : 'Show preview'}
+                >
+                  Preview
+                </button>
+                <button
+                  type="button"
+                  className={`symbols-toggle${padOpen ? ' is-open' : ''}`}
+                  onClick={() => setPadOpenPersist((o) => !o)}
+                  aria-pressed={padOpen}
+                  aria-expanded={padOpen}
+                  aria-controls="symbol-pad"
+                  title={padOpen ? 'Hide symbol pad' : 'Show symbol pad'}
+                >
+                  <span className="symbols-toggle-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <rect x="3" y="10" width="18" height="10" rx="2" />
+                      <path d="M7 14h.01M12 14h.01M17 14h.01M7 17h.01M12 17h.01M17 17h.01" />
+                      <path d="M8 7l2-3 2 3 2-3 2 3" />
+                    </svg>
+                  </span>
+                  Symbols
+                </button>
+              </div>
             </div>
             <textarea
               id="problem"
@@ -218,6 +262,11 @@ export default function App() {
               spellCheck={false}
               autoComplete="off"
             />
+            {previewOpen && (
+              <div id="live-preview">
+                <LivePreview input={input} />
+              </div>
+            )}
             <div id="symbol-pad">
               <SymbolPad
                 open={padOpen}
