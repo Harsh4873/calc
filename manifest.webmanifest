@@ -1,0 +1,22 @@
+{
+  "name": "Calc — Step-by-step Math Solver",
+  "short_name": "Calc",
+  "description": "Fast, private math solver for arithmetic, algebra, and calculus with step-by-step results.",
+  "id": "/calc/",
+  "start_url": "/calc/",
+  "scope": "/calc/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#0f1226",
+  "theme_color": "#4f46e5",
+  "categories": ["education", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/calc/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
