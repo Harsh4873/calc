@@ -88,7 +88,7 @@ export const PAD_ROWS: PadRow[] = [
       { id: 'acos', label: 'arccos', ariaLabel: 'Arccosine', before: 'acos(', after: ')' },
       { id: 'atan', label: 'arctan', ariaLabel: 'Arctangent', before: 'atan(', after: ')' },
       { id: 'ln', label: 'ln', ariaLabel: 'Natural log', before: 'ln(', after: ')' },
-      { id: 'log', label: 'log', ariaLabel: 'Log base 10', before: 'log(', after: ')' },
+      { id: 'log', label: 'log', ariaLabel: 'Log base 10', before: 'log10(', after: ')' },
     ],
   },
   {

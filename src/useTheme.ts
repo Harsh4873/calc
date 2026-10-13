@@ -14,11 +14,9 @@ function loadTheme(): Theme {
 }
 
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>('system');
-
-  useEffect(() => {
-    setTheme(loadTheme());
-  }, []);
+  // Read storage during init. A later effect that writes the default "system"
+  // before this read lands clobbers the saved theme under StrictMode.
+  const [theme, setTheme] = useState<Theme>(loadTheme);
 
   useEffect(() => {
     const root = document.documentElement;

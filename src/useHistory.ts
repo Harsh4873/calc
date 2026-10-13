@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 export interface HistoryEntry {
   id: string;
@@ -37,11 +37,7 @@ function makeId(): string {
 
 /** Private, on-device history stored in localStorage only. */
 export function useHistory() {
-  const [entries, setEntries] = useState<HistoryEntry[]>([]);
-
-  useEffect(() => {
-    setEntries(load());
-  }, []);
+  const [entries, setEntries] = useState<HistoryEntry[]>(load);
 
   const add = useCallback((input: string, answerText: string) => {
     setEntries((prev) => {

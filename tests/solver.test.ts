@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PAD_ROWS } from '../src/components/SymbolPad';
 import { solve } from '../src/solver';
 import { parseProblem, normalizeExpr } from '../src/solver';
 
@@ -21,6 +22,13 @@ describe('parseProblem', () => {
   });
   it('detects integral', () => {
     expect(parseProblem('integrate x^2').type).toBe('integral');
+    const spaced = parseProblem('∫ x^2 dx');
+    expect(spaced.type).toBe('integral');
+    expect(spaced.expr.replace(/\s+/g, '')).toBe('x^2');
+    expect(spaced.variable).toBe('x');
+    const glued = parseProblem('∫x^2dx');
+    expect(glued.type).toBe('integral');
+    expect(glued.expr.replace(/\s+/g, '')).toBe('x^2');
   });
   it('detects factor / expand / simplify', () => {
     expect(parseProblem('factor x^2 - 9').type).toBe('factor');
@@ -33,6 +41,22 @@ describe('normalizeExpr', () => {
   it('inserts implicit multiplication', () => {
     expect(normalizeExpr('2x')).toBe('2*x');
     expect(normalizeExpr('5x + 6')).toBe('5*x+6');
+    expect(normalizeExpr('2(3+4)')).toBe('2*(3+4)');
+  });
+
+  it('keeps scientific notation and digit-suffix functions', () => {
+    expect(normalizeExpr('1e10')).toBe('1e10');
+    expect(normalizeExpr('2e-3')).toBe('2e-3');
+    expect(normalizeExpr('6.02e+23')).toBe('6.02e+23');
+    expect(normalizeExpr('log10(100)')).toBe('log10(100)');
+  });
+
+  it('maps keypad functions onto the engines', () => {
+    expect(normalizeExpr('ln(1)')).toBe('log(1)');
+    expect(normalizeExpr('nthRoot(8, 3)')).toBe('nthroot(8,3)');
+    expect(normalizeExpr('√16')).toBe('sqrt(16)');
+    expect(normalizeExpr('∛8')).toBe('cbrt(8)');
+    expect(normalizeExpr('√x')).toBe('sqrt(x)');
   });
 });
 
@@ -106,5 +130,50 @@ describe('solve — extra behaviour', () => {
 
   it('never throws for gibberish', () => {
     expect(() => solve(')(@#$')).not.toThrow();
+  });
+
+  it('evaluates scientific notation', () => {
+    expect(solve('1e10').answerText).toBe('1e+10');
+    expect(solve('2e-3').answerText).toBe('0.002');
+    expect(solve('1e-15').answerText).toBe('1e-15');
+    expect(solve('6.02e23').answerText).toBe('6.02e+23');
+  });
+
+  it('evaluates keypad functions that the engines name differently', () => {
+    expect(solve('log10(100)').error).toBeUndefined();
+    expect(solve('log10(100)').answerText).toBe('2');
+    expect(solve('ln(1)').answerText).toBe('0');
+    expect(solve('ln(e)').answerText).toBe('1');
+    expect(solve('nthRoot(8, 3)').answerText).toBe('2');
+    expect(solve('√16').answerText).toBe('4');
+    expect(solve('∛8').answerText).toBe('2');
+  });
+
+  it('returns exact zeros for sin(pi) and cos(pi/2)', () => {
+    expect(solve('sin(pi)').answerText).toBe('0');
+    expect(solve('cos(pi/2)').answerText).toBe('0');
+    expect(solve('tan(pi)').answerText).toBe('0');
+  });
+
+  it('integrates unicode and glued differentials', () => {
+    for (const input of ['∫ x^2 dx', '∫x^2 dx', '∫x^2dx']) {
+      const r = solve(input);
+      expect(r.error, input).toBeUndefined();
+      expect(r.type, input).toBe('integral');
+      const t = norm(r.answerText);
+      expect(t, input).toMatch(/x\^3\/3|\(?1\/3\)?\*?x\^3/);
+      expect(t, input).not.toContain('dx');
+    }
+    expect(norm(solve('integrate dx').answerText)).toMatch(/^x\+C$/);
+  });
+
+  it('keeps 2pi symbolic', () => {
+    expect(norm(solve('2pi').answerText)).toBe('2*pi');
+  });
+
+  it('inserts a base-10 log from the log key', () => {
+    const logKey = PAD_ROWS.flatMap((row) => row.keys).find((key) => key.id === 'log');
+    expect(logKey?.before).toBe('log10(');
+    expect(logKey?.ariaLabel).toMatch(/base 10/i);
   });
 });

@@ -82,6 +82,12 @@ describe('toPreviewLatex', () => {
   it('renders trig and sqrt', () => {
     expect(toPreviewLatex('sin(x)')).not.toBeNull();
     expect(toPreviewLatex('sqrt(16)')).not.toBeNull();
+    expect(toPreviewLatex('√16')).not.toBeNull();
+    expect(toPreviewLatex('ln(1)')).not.toBeNull();
+  });
+
+  it('previews an integral with a leading ∫ and a space', () => {
+    expect(toPreviewLatex('∫ x^2 dx')).not.toBeNull();
   });
 
   it('never throws for gibberish', () => {

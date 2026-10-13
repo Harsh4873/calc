@@ -23,12 +23,32 @@ function fmtNumber(value: unknown): string {
   return mjsFormat(value, { precision: 14 }).replace(/(\.\d*?)0+($|e)/, '$1$2').replace(/\.$/, '');
 }
 
+/**
+ * math.js evaluates exact zeros such as sin(pi) and cos(pi/2) to about 1e-16.
+ * When the CAS result is a nearby integer, use that integer.
+ */
+function exactNearZero(norm: string, value: unknown, formatted: string): string {
+  if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) >= 1e-12) {
+    return formatted;
+  }
+  try {
+    const exact = nerdamer(norm).text();
+    if (!/^[+-]?\d+$/.test(exact)) return formatted;
+    const exactNum = Number(exact);
+    if (!Number.isSafeInteger(exactNum)) return formatted;
+    if (Math.abs(value - exactNum) <= 1e-9) return exact;
+  } catch {
+    /* keep the numeric formatting */
+  }
+  return formatted;
+}
+
 // ---------- individual solvers ----------
 
 function solveArithmetic(expr: string): SolveResult {
   const norm = normalizeExpr(expr);
   const value = mjsEvaluate(norm);
-  const text = fmtNumber(value);
+  const text = exactNearZero(norm, value, fmtNumber(value));
   const steps: SolveStep[] = [
     { title: 'Expression', latex: toTeX(norm), detail: expr.trim() },
     { title: 'Result', latex: `${toTeX(norm)} = ${text}` },

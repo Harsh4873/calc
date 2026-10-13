@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import LivePreview from './components/LivePreview';
 import Math from './components/Math';
 import SymbolPad, { type PadAction } from './components/SymbolPad';
@@ -68,18 +68,13 @@ function savePreviewOpen(open: boolean): void {
 export default function App() {
   const [input, setInput] = useState('');
   const [result, setResult] = useState<SolveResult | null>(null);
-  const [padOpen, setPadOpen] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(true);
+  const [padOpen, setPadOpen] = useState(loadPadOpen);
+  const [previewOpen, setPreviewOpen] = useState(loadPreviewOpen);
   const { entries, add, clear } = useHistory();
   const { theme, cycle } = useTheme();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   // Track selection so pad inserts work even if focus briefly blurs.
   const selectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
-
-  useEffect(() => {
-    setPadOpen(loadPadOpen());
-    setPreviewOpen(loadPreviewOpen());
-  }, []);
 
   const setPadOpenPersist = useCallback((open: boolean | ((prev: boolean) => boolean)) => {
     setPadOpen((prev) => {
